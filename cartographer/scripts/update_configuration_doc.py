@@ -47,79 +47,155 @@ SUFFIX = """
 """
 NODOC = 'Not yet documented.'
 
-def GenerateDocumentation(output_dict, proto_file_name):
-  copyright = True
-  message = None
-  content = [];
-  package = None
-  multiline = None
-  print("Reading '%s'..." % proto_file_name)
-  for line in io.open(proto_file_name, encoding='UTF-8'):
+
+class Message(object):
+  def __init__(self, name, package, preceding_comments):
+    self.name = name
+    self.package = package
+    self.preceding_comments = preceding_comments
+    self.trailing_comments = None
+    self.options = []
+
+  def AddTrailingComments(self, comments):
+    self.trailing_comments = comments
+
+  def AddOption(self, option_type, name, comments):
+    self.options.append((option_type, name, comments))
+
+
+def ParseProtoFile(proto_file):
+  """Computes the list of Message objects of the option messages in a file."""
+  line_iter = iter(proto_file)
+
+  # We ignore the license header and search for the 'package' line.
+  for line in line_iter:
     line = line.strip()
-    if copyright:
-      if not line.startswith('//'):
-        copyright = False
-      continue
-    if package is None:
-      if line.startswith('package'):
-        assert line[-1] == ';'
-        package = line[7:-1].strip()
-      continue
-    if line.startswith('//'):
-      content_line = line[2:].strip()
-      if not content_line.startswith('NEXT ID:'):
-        content.append(content_line)
-      continue
-    if message is None:
-      if line.startswith('message') and line.endswith('Options {'):
-        message = package + '.' + line[7:-1].strip()
-        print(" Found '%s'." % message)
-        assert message not in output_dict
-        message_list = [message, '=' * len(message), '']
-        output_dict[message] = message_list
-        message_list.extend(content)
-        content = []
-      continue
-    elif line.endswith('}'):
-      message_list.extend(content)
-      content = []
-      message_list = None
-      message = None
+    if line.startswith('package'):
+      assert line[-1] == ';'
+      package = line[7:-1].strip()
+      break
     else:
-      assert not line.startswith('required')
-      if multiline is None:
-        if line.startswith('optional'):
-          multiline = line
-        else:
-          continue
+      assert '}' not in line
+
+  message_list = []
+  while True:
+    # Search for the next options message and capture preceding comments.
+    message_comments = []
+    for line in line_iter:
+      line = line.strip()
+      if '}' in line:
+        # The preceding comments were for a different message it seems.
+        message_comments = []
+      elif line.startswith('//'):
+        # We keep comments preceding an options message.
+        comment = line[2:].strip()
+        if not comment.startswith('NEXT ID:'):
+          message_comments.append(comment)
+      elif line.startswith('message') and line.endswith('Options {'):
+        message_name = package + '.' + line[7:-1].strip()
+        break
+    else:
+      # We reached the end of file.
+      break
+    print(" Found '%s'." % message_name)
+    message = Message(message_name, package, message_comments)
+    message_list.append(message)
+
+    # We capture the contents of this message.
+    option_comments = []
+    multiline = None
+    for line in line_iter:
+      line = line.strip()
+      if '}' in line:
+        # We reached the end of this message.
+        message.AddTrailingComments(option_comments)
+        break
+      elif line.startswith('//'):
+        comment = line[2:].strip()
+        if not comment.startswith('NEXT ID:'):
+          option_comments.append(comment)
       else:
-        multiline += ' ' + line
-      if not multiline.endswith(';'):
-        continue
-      assert len(multiline) < 200
-      option = multiline[8:-1].strip().rstrip('0123456789').strip()
-      assert option.endswith('=')
-      option = option[:-1].strip();
-      print("  Option '%s'." % option)
-      multiline = None
-      message_list.append(option)
-      if len(content) == 0:
-        content.append(NODOC)
-      for option_description_line in content:
-        message_list.append('  ' + option_description_line)
-      content = []
-      message_list.append('')
+        assert not line.startswith('required')
+        if multiline is None:
+          if line.startswith('optional'):
+            multiline = line
+          else:
+            continue
+        else:
+          multiline += ' ' + line
+        if not multiline.endswith(';'):
+          continue
+        assert len(multiline) < 200
+        option = multiline[8:-1].strip().rstrip('0123456789').strip()
+        assert option.endswith('=')
+        option_type, option_name = option[:-1].strip().split();
+        print("  Option '%s'." % option_name)
+        multiline = None
+        message.AddOption(option_type, option_name, option_comments)
+        option_comments = []
+
+  return message_list
 
 
-def GenerateDocumentationRecursively(output_file, root):
-  """Recursively generates documentation, sorts and writes it."""
-  output_dict = {}
-  for root, dirs, files in os.walk(root):
-    for name in files:
+def ParseProtoFilesRecursively(root):
+  """Recursively parses all proto files into a list of Message objects."""
+  message_list = []
+  for dirpath, dirnames, filenames in os.walk(root):
+    for name in filenames:
       if name.endswith('.proto'):
-        path = os.path.join(root, name)
+        path = os.path.join(dirpath, name)
+        print("Found '%s'..." % path)
         assert not os.path.islink(path)
-        GenerateDocumentation(output_dict, path)
+        message_list.extend(ParseProtoFile(io.open(path, encoding='UTF-8')))
+  return message_list
+
+
+class ResolutionError(Exception):
+  """Raised when resolving a message name fails."""
+
+
+class Resolver(object):
+  def __init__(self, name_set):
+    self.name_set = set(iter(name_set))
+
+  def Resolve(self, message_name, package_name):
+    if message_name in ('bool', 'double', 'float', 'int32'):
+      return message_name
+    if message_name.startswith('.'):
+      return message_name[1:]
+    package = package_name.split('.')
+    for levels in range(len(package), -1, -1):
+      candidate = '.'.join(package[0:levels]) + '.' + message_name
+      if candidate in self.name_set:
+        return candidate
+    raise ResolutionError(
+        'Resolving %s in %s failed.' % (message_name, package_name))
+
+
+def GenerateDocumentation(output_file, root):
+  """Recursively generates documentation, sorts and writes it."""
+  message_list = ParseProtoFilesRecursively(root)
+  resolver = Resolver(message.name for message in message_list)
+
+  output_dict = {}
+  for message in message_list:
+    content = [message.name, '=' * len(message.name), '']
+    assert message.name not in output_dict
+    output_dict[message.name] = content
+    if message.preceding_comments:
+      content.extend(preceding_comments)
+      content.append('')
+    for option_type, option_name, option_comments in message.options:
+      content.append(
+          resolver.Resolve(option_type, message.package) + ' ' + option_name)
+      if not option_comments:
+        option_comments.append(NODOC)
+      for comment in option_comments:
+        content.append('  ' + comment)
+      content.append('')
+    if message.trailing_comments:
+      content.extend(message.trailing_comments)
+      content.append('')
 
   output = ['\n'.join(doc) for key, doc in sorted(list(output_dict.items()))]
   print('\n\n'.join(output), file=output_file)
@@ -130,7 +206,7 @@ def main():
   assert not os.path.islink(ROOT) and os.path.isdir(ROOT)
   output_file = io.open(TARGET, mode='w', encoding='UTF-8', newline='\n')
   output_file.write(PREFIX)
-  GenerateDocumentationRecursively(output_file, ROOT)
+  GenerateDocumentation(output_file, ROOT)
   output_file.write(SUFFIX)
   output_file.close()
 

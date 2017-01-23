@@ -185,10 +185,10 @@ sensor_msgs::PointCloud2 ToPointCloud2Message(
 ::cartographer::sensor::proto::LaserScan ToCartographer(
     const sensor_msgs::LaserScan& msg) {
   ::cartographer::sensor::proto::LaserScan proto;
-  proto.set_angle_min(-1.658063);
-  proto.set_angle_max(1.658063);
-  proto.set_angle_increment((proto.angle_max() - proto.angle_min()) / (double)(1141 - 1));
-  proto.set_time_increment(msg.scan_time / (2.f * M_PI) * proto.angle_increment());
+  proto.set_angle_min(msg.angle_min);
+  proto.set_angle_max(msg.angle_max);
+  proto.set_angle_increment(msg.angle_increment);
+  proto.set_time_increment(msg.time_increment);
   proto.set_scan_time(msg.scan_time);
   proto.set_range_min(msg.range_min);
   proto.set_range_max(msg.range_max);
