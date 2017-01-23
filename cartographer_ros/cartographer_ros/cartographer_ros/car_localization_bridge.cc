@@ -86,10 +86,6 @@ CarLocalizationBridge::BuildOccupancyGrid() {
   occupancy_grid->info.origin.orientation.x = 0.;
   occupancy_grid->info.origin.orientation.y = 0.;
   occupancy_grid->info.origin.orientation.z = 0.;
-std::cout << probability_grid_.limits().max().x() << std::endl;
-std::cout << probability_grid_.limits().max().y() << std::endl;
-std::cout << occupancy_grid->info.origin.position.x << std::endl;
-std::cout << occupancy_grid->info.origin.position.y << std::endl;
   occupancy_grid->data.resize(cell_limits.num_x_cells * cell_limits.num_y_cells,
                               -1);
   for (const Eigen::Array2i& xy_index :
@@ -126,17 +122,34 @@ CarLocalizationBridge::GetTrajectoryStates() {
       continue;
     }
 
+    cartographer::transform::Rigid3d pose;
+    double confidence = 0.0;
+    trajectory_builder->GetPose(pose, confidence);
+
     trajectory_states[trajectory_id] = {
         pose_estimate,
         cartographer::transform::Rigid3d::Identity(),
         sensor_bridge.tf_bridge().LookupToTracking(pose_estimate.time,
-                                                   options_.published_frame)};
+                                                   options_.published_frame),
+        pose,
+        confidence};
   }
   return trajectory_states;
 }
 
 SensorBridge* CarLocalizationBridge::sensor_bridge(const int trajectory_id) {
   return sensor_bridges_.at(trajectory_id).get();
+}
+
+void CarLocalizationBridge::SetPose(const ::geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+{
+  for (const auto& entry : sensor_bridges_) {
+    const int trajectory_id = entry.first;
+    const SensorBridge& sensor_bridge = *entry.second;  
+    std::unique_ptr<::cartographer::transform::Rigid3d> tf = sensor_bridge.tf_bridge().LookupToTracking(FromRos(msg->header.stamp), options_.published_frame);
+    cartographer::transform::Rigid3d pos = ToRigid3d(msg->pose.pose) * (tf->inverse());
+    map_builder_.GetTrajectoryBuilder(trajectory_id)->SetPose(pos);
+  }
 }
 
 }  // namespace cartographer_ros

@@ -61,7 +61,7 @@ class CarLocalization {
   void AddOdometerData(common::Time time, const transform::Rigid3d& pose);
 
   void SetPose(const transform::Rigid3d& pos);
-  void GetPose(transform::Rigid3d& pos, double& confidence);
+  const void GetPose(transform::Rigid3d& pos, double& confidence) const ;
  private:
   sensor::LaserFan TransformAndFilterLaserFan(
       const transform::Rigid3f& tracking_to_tracking_2d,

@@ -59,7 +59,7 @@ void CarLocalizationTrajectoryBuilder::SetPose(const transform::Rigid3d& pos)
   local_trajectory_builder_.SetPose(pos);
 }
 
-void CarLocalizationTrajectoryBuilder::GetPose(transform::Rigid3d& pos, double& confidence)
+const void CarLocalizationTrajectoryBuilder::GetPose(transform::Rigid3d& pos, double& confidence) const
 {
   local_trajectory_builder_.GetPose(pos, confidence);
 }

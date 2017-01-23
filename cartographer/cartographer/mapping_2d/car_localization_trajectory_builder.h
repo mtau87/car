@@ -46,8 +46,8 @@ class CarLocalizationTrajectoryBuilder
   void AddOdometerData(common::Time time,
                        const transform::Rigid3d& pose) override;
 
-  void SetPose(const transform::Rigid3d& pos);
-  void GetPose(transform::Rigid3d& pos, double& confidence);
+  virtual void SetPose(const transform::Rigid3d& pos);
+  virtual const void GetPose(transform::Rigid3d& pos, double& confidence) const override;
 
  private:
   const proto::LocalTrajectoryBuilderOptions options_;

@@ -233,7 +233,7 @@ void CarLocalization::SetPose(const transform::Rigid3d& pos)
 	pose_estimate_ = pos;
 }
 
-void CarLocalization::GetPose(transform::Rigid3d& pos, double& confidence)
+const void CarLocalization::GetPose(transform::Rigid3d& pos, double& confidence) const 
 {
 	pos = pose_estimate_;
 	confidence = confidence_;

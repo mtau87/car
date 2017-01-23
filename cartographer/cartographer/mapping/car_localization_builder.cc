@@ -23,7 +23,7 @@
 #include <utility>
 
 #include "cartographer/common/make_unique.h"
-#include "cartographer/mapping/collated_trajectory_builder.h"
+#include "cartographer/mapping/car_collated_trajectory_builder.h"
 #include "cartographer/mapping_2d/car_localization_trajectory_builder.h"
 #include "cartographer/mapping_3d/global_trajectory_builder.h"
 #include "cartographer/mapping_3d/local_trajectory_builder_options.h"
@@ -48,7 +48,7 @@ int CarLocalizationBuilder::AddTrajectoryBuilder(
     const std::unordered_set<string>& expected_sensor_ids) {
   const int trajectory_id = trajectory_builders_.size();
   trajectory_builders_.push_back(
-      common::make_unique<CollatedTrajectoryBuilder>(
+      common::make_unique<CarCollatedTrajectoryBuilder>(
           &sensor_collator_, trajectory_id, expected_sensor_ids,
           common::make_unique<mapping_2d::CarLocalizationTrajectoryBuilder>(
               options_.trajectory_builder_2d_options(),

@@ -147,14 +147,14 @@ void LocNode::PublishTrajectoryStates(const ::ros::WallTimerEvent& timer_event) 
         tf_broadcaster_.sendTransform(stamped_transform);
       }
 
-	  if (options_.provide_pose)
+      if (options_.provide_pose)
 	  	{
-		  geometry_msgs::PoseStamped pose;
-		  pose.header.frame_id = options_.map_frame;
-		  pose.header.stamp = ToRos(trajectory_state.pose_estimate.time);
-		  pose.pose = ToGeometryMsgPose(tracking_to_map * (*trajectory_state.published_to_tracking));
-		  pose.pose.position.z = 0.8;
-		  pose_publisher_.publish(pose);
+  		  geometry_msgs::PoseStamped pose;
+  		  pose.header.frame_id = options_.map_frame;
+  		  pose.header.stamp = ToRos(trajectory_state.pose_estimate.time);
+  		  pose.pose = ToGeometryMsgPose(tracking_to_map * (*trajectory_state.published_to_tracking));
+  		  pose.pose.position.z = trajectory_state.confidence;
+  		  pose_publisher_.publish(pose);
 	  	}
     }
   }

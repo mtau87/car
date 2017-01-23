@@ -85,6 +85,12 @@ void LocRun() {
     expected_sensor_ids.insert(kLaserScanTopic);
   }
 
+  ::ros::Subscriber initial_pose_subscriber = node.node_handle()->subscribe("initialpose", 2, boost::function<void(const geometry_msgs::PoseWithCovarianceStampedConstPtr&)>(
+            [&](const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg) {
+              node.map_builder_bridge()
+                  ->SetPose(msg);
+            }));
+
   trajectory_id = node.map_builder_bridge()->AddTrajectory(
       expected_sensor_ids, options.tracking_frame);
 

@@ -31,15 +31,18 @@
 #include "cartographer_ros_msgs/SubmapList.h"
 #include "cartographer_ros_msgs/SubmapQuery.h"
 #include "nav_msgs/OccupancyGrid.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
 
 namespace cartographer_ros {
 
 class CarLocalizationBridge {
  public:
   struct TrajectoryState {
-    cartographer::mapping::TrajectoryBuilder::PoseEstimate pose_estimate;    
+    cartographer::mapping::TrajectoryBuilder::PoseEstimate pose_estimate;
     cartographer::transform::Rigid3d local_to_map;
     std::unique_ptr<cartographer::transform::Rigid3d> published_to_tracking;
+    cartographer::transform::Rigid3d pose;
+    double confidence;
   };
 
   CarLocalizationBridge(const NodeOptions& options, tf2_ros::Buffer* tf_buffer, const cartographer::mapping_2d::ProbabilityGrid& probability_grid);
@@ -56,6 +59,7 @@ class CarLocalizationBridge {
 
   std::unordered_map<int, TrajectoryState> GetTrajectoryStates();
   SensorBridge* sensor_bridge(int trajectory_id);
+  void SetPose(const ::geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
 
  private:
   const cartographer::mapping_2d::ProbabilityGrid& probability_grid_;

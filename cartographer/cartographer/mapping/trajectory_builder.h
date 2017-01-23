@@ -57,6 +57,9 @@ class TrajectoryBuilder {
   virtual const Submaps* submaps() const = 0;
   virtual const PoseEstimate& pose_estimate() const = 0;
 
+  virtual void SetPose(const transform::Rigid3d& pos){}
+  virtual const void GetPose(transform::Rigid3d& pos, double& confidence) const{}
+
   virtual void AddSensorData(const string& sensor_id,
                              std::unique_ptr<sensor::Data> data) = 0;
 

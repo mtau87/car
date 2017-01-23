@@ -49,6 +49,9 @@ class GlobalTrajectoryBuilderInterface {
   virtual const Submaps* submaps() const = 0;
   virtual const PoseEstimate& pose_estimate() const = 0;
 
+  virtual void SetPose(const transform::Rigid3d& pos){}
+  virtual const void GetPose(transform::Rigid3d& pos, double& confidence) const{}
+
   virtual void AddRangefinderData(common::Time time,
                                   const Eigen::Vector3f& origin,
                                   const sensor::PointCloud& ranges) = 0;
