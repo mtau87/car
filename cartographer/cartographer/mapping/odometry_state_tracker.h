@@ -55,6 +55,7 @@ class OdometryStateTracker {
   // Retrieves the most recent OdometryState. Must not be called when empty.
   const OdometryState& newest() const;
 
+  void Clear();
  private:
   OdometryStates odometry_states_;
   size_t window_size_;

@@ -84,6 +84,35 @@ void LocRun() {
             }));
     expected_sensor_ids.insert(kLaserScanTopic);
   }
+  
+  ::ros::Subscriber imu_subscriber;
+  if (options.map_builder_options.use_trajectory_builder_3d() ||
+      (options.map_builder_options.use_trajectory_builder_2d() &&
+       options.map_builder_options.trajectory_builder_2d_options()
+           .use_imu_data())) {
+    imu_subscriber = node.node_handle()->subscribe(
+        kImuTopic, kInfiniteSubscriberQueueSize,
+        boost::function<void(const sensor_msgs::Imu::ConstPtr& msg)>(
+            [&](const sensor_msgs::Imu::ConstPtr& msg) {
+              node.map_builder_bridge()
+                  ->sensor_bridge(trajectory_id)
+                  ->HandleImuMessage(kImuTopic, msg);
+            }));
+    expected_sensor_ids.insert(kImuTopic);
+  }
+  // For both 2D and 3D SLAM, odometry is optional.
+  ::ros::Subscriber odometry_subscriber;
+  if (options.use_odometry) {
+    odometry_subscriber = node.node_handle()->subscribe(
+        kOdometryTopic, kInfiniteSubscriberQueueSize,
+        boost::function<void(const nav_msgs::Odometry::ConstPtr&)>(
+            [&](const nav_msgs::Odometry::ConstPtr& msg) {
+              node.map_builder_bridge()
+                  ->sensor_bridge(trajectory_id)
+                  ->HandleOdometryMessage(kOdometryTopic, msg);
+            }));
+    expected_sensor_ids.insert(kOdometryTopic);
+  }
 
   ::ros::Subscriber initial_pose_subscriber = node.node_handle()->subscribe("initialpose", 2, boost::function<void(const geometry_msgs::PoseWithCovarianceStampedConstPtr&)>(
             [&](const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg) {

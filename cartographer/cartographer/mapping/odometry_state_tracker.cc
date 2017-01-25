@@ -50,5 +50,9 @@ const OdometryState& OdometryStateTracker::newest() const {
   return odometry_states_.back();
 }
 
+void OdometryStateTracker::Clear(){
+	odometry_states_.clear();
+}
+
 }  // namespace mapping
 }  // namespace cartographer

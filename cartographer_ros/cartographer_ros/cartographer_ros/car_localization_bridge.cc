@@ -129,8 +129,7 @@ CarLocalizationBridge::GetTrajectoryStates() {
     trajectory_states[trajectory_id] = {
         pose_estimate,
         cartographer::transform::Rigid3d::Identity(),
-        sensor_bridge.tf_bridge().LookupToTracking(pose_estimate.time,
-                                                   options_.published_frame),
+        sensor_bridge.tf_bridge().LookupToTracking(pose_estimate.time, options_.published_frame),
         pose,
         confidence};
   }
@@ -146,7 +145,7 @@ void CarLocalizationBridge::SetPose(const ::geometry_msgs::PoseWithCovarianceSta
   for (const auto& entry : sensor_bridges_) {
     const int trajectory_id = entry.first;
     const SensorBridge& sensor_bridge = *entry.second;  
-    std::unique_ptr<::cartographer::transform::Rigid3d> tf = sensor_bridge.tf_bridge().LookupToTracking(FromRos(msg->header.stamp), options_.published_frame);
+    std::unique_ptr<::cartographer::transform::Rigid3d> tf = sensor_bridge.tf_bridge().LookupToTracking(FromRos(msg->header.stamp), options_.tracking_frame);
     cartographer::transform::Rigid3d pos = ToRigid3d(msg->pose.pose) * (tf->inverse());
     map_builder_.GetTrajectoryBuilder(trajectory_id)->SetPose(pos);
   }

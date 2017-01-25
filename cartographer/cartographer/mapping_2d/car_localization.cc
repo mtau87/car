@@ -164,6 +164,7 @@ CarLocalization::AddHorizontalLaserFan(
   }
 
   Predict(time);
+
   const transform::Rigid3d odometry_prediction =
       pose_estimate_ * odometry_correction_;
   const transform::Rigid3d model_prediction = pose_estimate_;
@@ -188,7 +189,6 @@ CarLocalization::AddHorizontalLaserFan(
   kalman_filter::PoseCovariance covariance_observation;
   ScanMatch(time, pose_prediction, tracking_to_tracking_2d,
             laser_fan_in_tracking_2d, &pose_estimate_, &covariance_observation, confidence_);
-  std::cout << confidence_ << std::endl;
   odometry_correction_ = transform::Rigid3d::Identity();
   if (!odometry_state_tracker_.empty()) {
     // We add an odometry state, so that the correction from the scan matching
@@ -227,10 +227,11 @@ CarLocalization::AddHorizontalLaserFan(
     return;
   }
 }
-
 void CarLocalization::SetPose(const transform::Rigid3d& pos)
 {
 	pose_estimate_ = pos;
+	odometry_correction_ = transform::Rigid3d::Identity();
+	odometry_state_tracker_.Clear();
 }
 
 const void CarLocalization::GetPose(transform::Rigid3d& pos, double& confidence) const 
@@ -251,6 +252,7 @@ void CarLocalization::AddImuData(
 
   InitializeImuTracker(time);
   Predict(time);
+  
   imu_tracker_->AddImuLinearAccelerationObservation(linear_acceleration);
   imu_tracker_->AddImuAngularVelocityObservation(angular_velocity);
 
@@ -274,6 +276,7 @@ void CarLocalization::AddOdometerData(
   }
 
   Predict(time);
+
   if (!odometry_state_tracker_.empty()) {
     const auto& previous_odometry_state = odometry_state_tracker_.newest();
     const transform::Rigid3d delta =
