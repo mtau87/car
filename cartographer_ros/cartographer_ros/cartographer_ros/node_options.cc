@@ -35,6 +35,8 @@ NodeOptions CreateNodeOptions(
   options.odom_frame = lua_parameter_dictionary->GetString("odom_frame");
   options.provide_odom_frame =
       lua_parameter_dictionary->GetBool("provide_odom_frame");
+  options.provide_pose =
+      lua_parameter_dictionary->GetBool("provide_pose");
   options.use_odometry = lua_parameter_dictionary->GetBool("use_odometry");
   options.use_laser_scan = lua_parameter_dictionary->GetBool("use_laser_scan");
   options.use_multi_echo_laser_scan =
