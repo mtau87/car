@@ -17,6 +17,9 @@
 #ifndef CARTOGRAPHER_IO_XRAY_POINTS_PROCESSOR_H_
 #define CARTOGRAPHER_IO_XRAY_POINTS_PROCESSOR_H_
 
+#include <map>
+
+#include "Eigen/Core"
 #include "cartographer/common/lua_parameter_dictionary.h"
 #include "cartographer/io/file_writer.h"
 #include "cartographer/io/points_processor.h"
@@ -36,12 +39,12 @@ class XRayPointsProcessor : public PointsProcessor {
   XRayPointsProcessor(double voxel_size, const transform::Rigid3f& transform,
                       const std::vector<mapping::Floor>& floors,
                       const string& output_filename,
-                      const FileWriterFactory& file_writer_factory,
+                      FileWriterFactory file_writer_factory,
                       PointsProcessor* next);
 
   static std::unique_ptr<XRayPointsProcessor> FromDictionary(
       const mapping::proto::Trajectory& trajectory,
-      const FileWriterFactory& file_writer_factory,
+      FileWriterFactory file_writer_factory,
       common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
   ~XRayPointsProcessor() override {}
@@ -50,8 +53,25 @@ class XRayPointsProcessor : public PointsProcessor {
   FlushResult Flush() override;
 
  private:
+  struct ColumnData {
+    double sum_r = 0.;
+    double sum_g = 0.;
+    double sum_b = 0.;
+    uint32_t count = 0;
+  };
+
+  struct Aggregation {
+    mapping_3d::HybridGridBase<bool> voxels;
+    std::map<std::pair<int, int>, ColumnData> column_data;
+  };
+
+  void WriteVoxels(const Aggregation& aggregation,
+                   FileWriter* const file_writer);
+  void Insert(const PointsBatch& batch, const transform::Rigid3f& transform,
+              Aggregation* aggregation);
+
   PointsProcessor* const next_;
-  const FileWriterFactory& file_writer_factory_;
+  FileWriterFactory file_writer_factory_;
 
   // If empty, we do not separate into floors.
   std::vector<mapping::Floor> floors_;
@@ -60,7 +80,7 @@ class XRayPointsProcessor : public PointsProcessor {
   const transform::Rigid3f transform_;
 
   // Only has one entry if we do not separate into floors.
-  std::vector<mapping_3d::HybridGridBase<bool>> voxels_;
+  std::vector<Aggregation> aggregations_;
 };
 
 }  // namespace io

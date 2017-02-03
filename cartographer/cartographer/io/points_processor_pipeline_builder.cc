@@ -20,6 +20,7 @@
 #include "cartographer/io/coloring_points_processor.h"
 #include "cartographer/io/counting_points_processor.h"
 #include "cartographer/io/fixed_ratio_sampling_points_processor.h"
+#include "cartographer/io/intensity_to_color_points_processor.h"
 #include "cartographer/io/min_max_range_filtering_points_processor.h"
 #include "cartographer/io/null_points_processor.h"
 #include "cartographer/io/outlier_removing_points_processor.h"
@@ -45,11 +46,11 @@ void RegisterPlainPointsProcessor(
 
 template <typename PointsProcessorType>
 void RegisterFileWritingPointsProcessor(
-    const FileWriterFactory& file_writer_factory,
+    FileWriterFactory file_writer_factory,
     PointsProcessorPipelineBuilder* const builder) {
   builder->Register(
       PointsProcessorType::kConfigurationFileActionName,
-      [&file_writer_factory](
+      [file_writer_factory](
           common::LuaParameterDictionary* const dictionary,
           PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
         return PointsProcessorType::FromDictionary(file_writer_factory,
@@ -59,13 +60,14 @@ void RegisterFileWritingPointsProcessor(
 
 void RegisterBuiltInPointsProcessors(
     const mapping::proto::Trajectory& trajectory,
-    const FileWriterFactory& file_writer_factory,
+    FileWriterFactory file_writer_factory,
     PointsProcessorPipelineBuilder* builder) {
   RegisterPlainPointsProcessor<CountingPointsProcessor>(builder);
   RegisterPlainPointsProcessor<FixedRatioSamplingPointsProcessor>(builder);
   RegisterPlainPointsProcessor<MinMaxRangeFiteringPointsProcessor>(builder);
   RegisterPlainPointsProcessor<OutlierRemovingPointsProcessor>(builder);
   RegisterPlainPointsProcessor<ColoringPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<IntensityToColorPointsProcessor>(builder);
   RegisterFileWritingPointsProcessor<PcdWritingPointsProcessor>(
       file_writer_factory, builder);
   RegisterFileWritingPointsProcessor<PlyWritingPointsProcessor>(
@@ -77,7 +79,7 @@ void RegisterBuiltInPointsProcessors(
   // different building levels we walked on to separate the images.
   builder->Register(
       XRayPointsProcessor::kConfigurationFileActionName,
-      [&trajectory, &file_writer_factory](
+      [&trajectory, file_writer_factory](
           common::LuaParameterDictionary* const dictionary,
           PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
         return XRayPointsProcessor::FromDictionary(

@@ -39,17 +39,20 @@ namespace {
 
 constexpr int kInfiniteSubscriberQueueSize = 0;
 
-void Run() {
+NodeOptions LoadOptions() {
   auto file_resolver = cartographer::common::make_unique<
       cartographer::common::ConfigurationFileResolver>(
       std::vector<string>{FLAGS_configuration_directory});
   const string code =
       file_resolver->GetFileContentOrDie(FLAGS_configuration_basename);
-      
   cartographer::common::LuaParameterDictionary lua_parameter_dictionary(
       code, std::move(file_resolver));
 
-  const auto options = CreateNodeOptions(&lua_parameter_dictionary);
+  return CreateNodeOptions(&lua_parameter_dictionary);
+}
+
+void Run() {
+  const auto options = LoadOptions();
   constexpr double kTfBufferCacheTimeInSeconds = 1e6;
   tf2_ros::Buffer tf_buffer{::ros::Duration(kTfBufferCacheTimeInSeconds)};
   tf2_ros::TransformListener tf(tf_buffer);
