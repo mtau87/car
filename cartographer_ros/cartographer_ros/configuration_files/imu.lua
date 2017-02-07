@@ -21,6 +21,7 @@ options = {
   published_frame = "odom",
   odom_frame = "odom",
   provide_odom_frame = false,
+  provide_pose = true,
   use_odometry = true,
   use_laser_scan = true,
   use_multi_echo_laser_scan = false,
