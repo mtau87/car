@@ -28,6 +28,8 @@
 #include "rviz/display_context.h"
 #include "rviz/frame_manager.h"
 #include "rviz/properties/string_property.h"
+#include "glog/logging.h"
+
 
 namespace cartographer_rviz {
 
@@ -91,6 +93,7 @@ void SubmapsDisplay::reset() {
 void SubmapsDisplay::processMessage(
     const ::cartographer_ros_msgs::SubmapList::ConstPtr& msg) {
   ::cartographer::common::MutexLocker locker(&mutex_);
+  //LOG(INFO) << "Trajectory size: " << msg->trajectory.size();
   for (size_t trajectory_id = 0; trajectory_id < msg->trajectory.size();
        ++trajectory_id) {
     if (trajectory_id >= trajectories_.size()) {
@@ -99,6 +102,7 @@ void SubmapsDisplay::processMessage(
     auto& trajectory = trajectories_[trajectory_id];
     const std::vector<::cartographer_ros_msgs::SubmapEntry>& submap_entries =
         msg->trajectory[trajectory_id].submap;
+    //LOG(INFO) << "submap_entries size: " << submap_entries.size();
     for (size_t submap_index = 0; submap_index < submap_entries.size();
          ++submap_index) {
       if (submap_index >= trajectory.size()) {

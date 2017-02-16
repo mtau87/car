@@ -87,6 +87,8 @@ class DrawableSubmap : public QObject {
   Ogre::SceneManager* const scene_manager_;
   Ogre::SceneNode* const scene_node_;
   Ogre::ManualObject* manual_object_;
+  Ogre::ManualObject* pRect_;
+
   Ogre::TexturePtr texture_;
   Ogre::MaterialPtr material_;
   double submap_z_ = 0. GUARDED_BY(mutex_);

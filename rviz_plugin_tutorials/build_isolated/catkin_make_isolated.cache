@@ -1,0 +1,2 @@
+
+-G Ninja -DCATKIN_DEVEL_PREFIX=/home/robot/visualization_tutorials/rviz_plugin_tutorials/devel_isolated -DCMAKE_INSTALL_PREFIX=/home/robot/visualization_tutorials/rviz_plugin_tutorials/install_isolated

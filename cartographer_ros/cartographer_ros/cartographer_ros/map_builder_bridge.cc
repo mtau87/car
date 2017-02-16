@@ -127,6 +127,10 @@ MapBuilderBridge::BuildOccupancyGrid() {
   return occupancy_grid;
 }
 
+std::vector<cartographer::mapping::TrajectoryNode> MapBuilderBridge::GetTrajectoryNodes() {
+	return map_builder_.sparse_pose_graph()->GetTrajectoryNodes();
+}
+
 std::unordered_map<int, MapBuilderBridge::TrajectoryState>
 MapBuilderBridge::GetTrajectoryStates() {
   std::unordered_map<int, TrajectoryState> trajectory_states;

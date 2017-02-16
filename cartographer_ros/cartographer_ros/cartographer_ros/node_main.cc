@@ -25,6 +25,7 @@
 #include "cartographer_ros/ros_log_sink.h"
 #include "gflags/gflags.h"
 #include "tf2_ros/transform_listener.h"
+#include "cartographer_ros/msg_conversion.h"
 
 DEFINE_string(configuration_directory, "",
               "First directory in which configuration files are searched, "
@@ -158,6 +159,25 @@ void Run() {
             node.map_builder_bridge()->WriteAssets(request.stem);
             return true;
           }));
+
+  ::ros::ServiceServer trajectory_nodes_query_server = node.node_handle()->advertiseService(
+      kTrajectoryNodesServiceName,
+      boost::function<bool(
+          ::cartographer_ros_msgs::TrajectoryNodes::Request&,
+          ::cartographer_ros_msgs::TrajectoryNodes::Response&)>([&](
+          ::cartographer_ros_msgs::TrajectoryNodes::Request& request,
+          ::cartographer_ros_msgs::TrajectoryNodes::Response& response) {
+        response.poses.header.stamp = ros::Time::now();
+        response.poses.header.frame_id = options.map_frame;
+        response.poses.poses.clear();
+        const auto trajectory_nodes = node.map_builder_bridge()->GetTrajectoryNodes();
+        for (const auto& nod : trajectory_nodes)
+        {
+          std::unique_ptr<::cartographer::transform::Rigid3d> tf = node.map_builder_bridge()->sensor_bridge(trajectory_id)->tf_bridge().LookupToTracking(nod.time(), options.tracking_frame);
+          response.poses.poses.push_back(ToGeometryMsgPose(nod.pose * (*tf)));
+        }
+        return true;
+      }));      
 
   ::ros::spin();
 

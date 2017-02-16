@@ -28,6 +28,7 @@
 #include "cartographer_ros_msgs/SubmapList.h"
 #include "cartographer_ros_msgs/SubmapQuery.h"
 #include "cartographer_ros_msgs/TrajectorySubmapList.h"
+#include "cartographer_ros_msgs/TrajectoryNodes.h"
 #include "ros/ros.h"
 #include "tf2_ros/transform_broadcaster.h"
 
@@ -45,6 +46,7 @@ constexpr char kScanMatchedPointCloudTopic[] = "scan_matched_points2";
 constexpr char kSubmapListTopic[] = "submap_list";
 constexpr char kSubmapQueryServiceName[] = "submap_query";
 constexpr char kPoseTopic[] = "pose";
+constexpr char kTrajectoryNodesServiceName[] = "trajectory_nodes_query";
 
 // Wires up ROS topics to SLAM.
 class Node {
@@ -82,6 +84,7 @@ class Node {
   ::ros::NodeHandle node_handle_;
   ::ros::Publisher submap_list_publisher_;
   ::ros::ServiceServer submap_query_server_;
+  ::ros::ServiceServer trajectory_nodes_query_server_;
   ::ros::Publisher scan_matched_point_cloud_publisher_;
   cartographer::common::Time last_scan_matched_point_cloud_time_ =
       cartographer::common::Time::min();

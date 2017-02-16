@@ -56,6 +56,7 @@ class MapBuilderBridge {
 
   cartographer_ros_msgs::SubmapList GetSubmapList();
   std::unique_ptr<nav_msgs::OccupancyGrid> BuildOccupancyGrid();
+  std::vector<cartographer::mapping::TrajectoryNode> GetTrajectoryNodes();
   std::unordered_map<int, TrajectoryState> GetTrajectoryStates();
 
   SensorBridge* sensor_bridge(int trajectory_id);

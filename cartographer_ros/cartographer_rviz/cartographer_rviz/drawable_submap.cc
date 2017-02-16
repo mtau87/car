@@ -29,6 +29,7 @@
 #include "cartographer_ros_msgs/SubmapQuery.h"
 #include "eigen_conversions/eigen_msg.h"
 #include "ros/ros.h"
+ #include "glog/logging.h"
 
 namespace cartographer_rviz {
 
@@ -37,6 +38,7 @@ namespace {
 constexpr std::chrono::milliseconds kMinQueryDelayInMs(250);
 constexpr char kSubmapTexturePrefix[] = "SubmapTexture";
 constexpr char kManualObjectPrefix[] = "ManualObjectSubmap";
+constexpr char kManualObjectTestPrefix[] = "ManualObjectTestSubmap";
 constexpr char kSubmapMaterialPrefix[] = "SubmapMaterial";
 constexpr char kSubmapSourceMaterialName[] = "cartographer_ros/Submap";
 
@@ -62,6 +64,9 @@ DrawableSubmap::DrawableSubmap(const int trajectory_id, const int submap_index,
       manual_object_(scene_manager->createManualObject(
           kManualObjectPrefix +
           GetSubmapIdentifier(trajectory_id, submap_index))),
+      pRect_(scene_manager->createManualObject(
+          kManualObjectTestPrefix + 
+          GetSubmapIdentifier(trajectory_id, submap_index))),      
       last_query_timestamp_(0) {
   material_ = Ogre::MaterialManager::getSingleton().getByName(
       kSubmapSourceMaterialName);
@@ -74,6 +79,7 @@ DrawableSubmap::DrawableSubmap(const int trajectory_id, const int submap_index,
   material_->setDepthBias(-1.f, 0.f);
   material_->setDepthWriteEnabled(false);
   scene_node_->attachObject(manual_object_);
+  scene_node_->attachObject(pRect_);
   connect(this, SIGNAL(RequestSucceeded()), this, SLOT(UpdateSceneNode()));
 }
 
@@ -85,6 +91,7 @@ DrawableSubmap::~DrawableSubmap() {
   }
   scene_manager_->destroySceneNode(scene_node_);
   scene_manager_->destroyManualObject(manual_object_);
+  scene_manager_->destroyManualObject(pRect_);
 }
 
 void DrawableSubmap::Update(
@@ -165,6 +172,7 @@ void DrawableSubmap::UpdateSceneNode() {
   ::cartographer::common::FastGunzipString(compressed_cells, &cells);
   tf::poseMsgToEigen(response_.slice_pose, slice_pose_);
   UpdateTransform();
+  //LOG(INFO) << "scene_node_position: " << scene_node_->getPosition();
   query_in_progress_ = false;
   // The call to Ogre's loadRawData below does not work with an RG texture,
   // therefore we create an RGB one whose blue channel is always 0.
@@ -173,6 +181,7 @@ void DrawableSubmap::UpdateSceneNode() {
     for (int j = 0; j < response_.width; ++j) {
       auto r = cells[(i * response_.width + j) * 2];
       auto g = cells[(i * response_.width + j) * 2 + 1];
+      // r: 127 g: 0 is white, r: 0 g: 127 is black
       rgb.push_back(r);
       rgb.push_back(g);
       rgb.push_back(0.);
@@ -197,6 +206,25 @@ void DrawableSubmap::UpdateSceneNode() {
   manual_object_->position(0.0f, -metric_width, 0.0f);
   manual_object_->textureCoord(1.0f, 0.0f);
   manual_object_->end();
+
+  pRect_->clear();
+  pRect_->begin("BaseWhiteNoLighting",
+        Ogre::RenderOperation::OT_TRIANGLE_STRIP);
+  // Bottom left
+  pRect_->position(-0.2f - slice_pose_.translation().x(), 0.0f - slice_pose_.translation().y(), 5.0f);
+  //manual_object_-> colour(Ogre::ColourValue::Blue);
+  pRect_->textureCoord(0.0f, 1.0f);
+  // Bottom right
+  pRect_->position(-0.2f - slice_pose_.translation().x(), -0.2f - slice_pose_.translation().y(), 5.0f);
+  pRect_->textureCoord(1.0f, 1.0f);
+  // Top left
+  pRect_->position(0.0f - slice_pose_.translation().x(), 0.0f - slice_pose_.translation().y(), 5.0f);
+  pRect_->textureCoord(0.0f, 0.0f);
+  // Top right
+  pRect_->position(0.0f - slice_pose_.translation().x(), -0.2f - slice_pose_.translation().y(), 5.0f);
+  pRect_->textureCoord(1.0f, 0.0f);
+  pRect_->end();
+  //scene_node_->attachObject(pRect);
 
   Ogre::DataStreamPtr pixel_stream;
   pixel_stream.bind(new Ogre::MemoryDataStream(rgb.data(), rgb.size()));

@@ -22,7 +22,5 @@
       output="screen">
     <remap from="scan" to="scan" />
   </node>
-  <node name="rviz" pkg="rviz" type="rviz" required="true"
-      args="-d $(find cartographer_ros)/configuration_files/test.rviz" />
 
 </launch>
