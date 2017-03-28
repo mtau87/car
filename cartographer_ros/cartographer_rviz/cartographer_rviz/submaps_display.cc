@@ -16,11 +16,14 @@
 
 #include "cartographer_rviz/submaps_display.h"
 
+#include <hash_set>
+
 #include "OgreResourceGroupManager.h"
 #include "cartographer/common/make_unique.h"
 #include "cartographer/common/mutex.h"
 #include "cartographer_ros_msgs/SubmapList.h"
 #include "cartographer_ros_msgs/SubmapQuery.h"
+#include "cartographer_ros_msgs/LoopClosureSubmap.h" 
 #include "geometry_msgs/TransformStamped.h"
 #include "pluginlib/class_list_macros.h"
 #include "ros/package.h"
@@ -29,7 +32,7 @@
 #include "rviz/frame_manager.h"
 #include "rviz/properties/string_property.h"
 #include "glog/logging.h"
-
+#include "eigen_conversions/eigen_msg.h"
 
 namespace cartographer_rviz {
 
@@ -42,6 +45,73 @@ constexpr char kScriptsDirectory[] = "/scripts";
 constexpr char kDefaultMapFrame[] = "map";
 constexpr char kDefaultTrackingFrame[] = "base_link";
 constexpr char kDefaultSubmapQueryServiceName[] = "/submap_query";
+::ros::Publisher* g_pubLoopClosureSubmap = NULL;
+
+std::string GetMarkerIdByName(std::string strMarkerName)
+{
+  int index = strMarkerName.find("_");
+  return strMarkerName.substr(index + 1);
+}
+
+// %Tag(processFeedback)%
+void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
+{
+  switch ( feedback->event_type )
+  {
+    case visualization_msgs::InteractiveMarkerFeedback::BUTTON_CLICK:
+      {
+        LOG(WARNING) << "Mouse click: " << feedback->marker_name;
+        //ROS_INFO_STREAM( "mouse click." );
+      }
+      break;
+
+    case visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT:
+      {
+        LOG(INFO) << "Menu click: " << feedback->marker_name;
+        std::string strId = GetMarkerIdByName(feedback->marker_name);
+        std::stringstream ss;
+        ss << strId;
+        int nId;
+        ss >> nId;
+        ::cartographer_ros_msgs::LoopClosureSubmap msg;
+        msg.submap_index = nId;
+        g_pubLoopClosureSubmap->publish(msg);
+      }
+      break;
+
+    case visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE:
+      break;
+
+    case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
+      // ROS_INFO_STREAM( s.str() << ": mouse down" << mouse_point_ss.str() << "." );
+      break;
+
+    case visualization_msgs::InteractiveMarkerFeedback::MOUSE_UP:
+      // ROS_INFO_STREAM( s.str() << ": mouse up" << mouse_point_ss.str() << "." );
+      break;
+  }
+
+  //server_->applyChanges();
+}
+// %EndTag(processFeedback)%
+
+// %Tag(Box)%
+visualization_msgs::Marker makeBox( visualization_msgs::InteractiveMarker &msg, float fSize = 0.45)
+{
+  visualization_msgs::Marker marker;
+
+  marker.type = visualization_msgs::Marker::SPHERE;
+  marker.scale.x = msg.scale * fSize;
+  marker.scale.y = msg.scale * fSize;
+  marker.scale.z = msg.scale * fSize;
+  marker.color.r = 0.7;
+  marker.color.g = 0.0;
+  marker.color.b = 0.0;
+  marker.color.a = 1.0;
+
+  return marker;
+}
+// %EndTag(Box)%
 
 }  // namespace
 
@@ -66,9 +136,26 @@ SubmapsDisplay::SubmapsDisplay() : tf_listener_(tf_buffer_) {
       package_path + kMaterialsDirectory + kScriptsDirectory, "FileSystem",
       ROS_PACKAGE_NAME);
   Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+
+  trajectory_id_ = -1;
+  submap_index_ = -1;
+
+  server_.reset( new interactive_markers::InteractiveMarkerServer("submap_list","",false) );
+  
+  connect(this, SIGNAL(RequestSucceeded()), this, SLOT(UpdateSceneNode()));
+
+  menu_handler_.insert( "Find Loop Closure", &processFeedback );
+
+  loop_closure_submap_publisher_ =
+  node_handle_.advertise<::cartographer_ros_msgs::LoopClosureSubmap>(
+      kLoopClosureSubmapTopic, 1);
+  g_pubLoopClosureSubmap = &loop_closure_submap_publisher_;
 }
 
-SubmapsDisplay::~SubmapsDisplay() { client_.shutdown(); }
+SubmapsDisplay::~SubmapsDisplay() {
+  server_.reset();
+  client_.shutdown(); 
+}
 
 void SubmapsDisplay::Reset() { reset(); }
 
@@ -110,9 +197,69 @@ void SubmapsDisplay::processMessage(
             ::cartographer::common::make_unique<DrawableSubmap>(
                 trajectory_id, submap_index, context_->getSceneManager()));
       }
+
       trajectory[submap_index]->Update(msg->header,
                                        submap_entries[submap_index],
                                        context_->getFrameManager());
+      // trajectory_id_ = trajectory_id;
+      // submap_index_ = submap_index;
+      Ogre::Vector3 vecSubmapPos = trajectories_[trajectory_id][submap_index]->GetPosition();
+      tf::Vector3 position;
+      position = tf::Vector3(vecSubmapPos.x, vecSubmapPos.y, 0.1f);
+      //LOG(INFO) << "--------------------submap: " << submap_index_ << ":" << position[0] << ", " << position[1]; 
+      std::string strMarkerName;
+      std::ostringstream strStream;    
+      strStream << submap_index;   
+      std::string strIdx = strStream.str();        
+      strMarkerName = "submap_" + strIdx;
+      visualization_msgs::InteractiveMarker int_marker;
+      if(server_->get(strMarkerName, int_marker))
+      {
+        geometry_msgs::Pose pose = int_marker.pose;
+        pose.position.x = vecSubmapPos.x;
+        pose.position.y = vecSubmapPos.y;
+        server_->setPose(strMarkerName, pose);
+      }
+      else
+      {
+        MakeMarker(submap_index, position, 1.0);
+      }
+      // query_in_progress_ = true;
+      // rpc_request_future_ = std::async(std::launch::async, [this]() {
+      //   ::cartographer_ros_msgs::SubmapQuery srv;
+      //   srv.request.trajectory_id = trajectory_id_;
+      //   srv.request.submap_index = submap_index_;
+      //   if (client_.call(srv)) {
+      //     // We emit a signal to update in the right thread, and pass via the
+      //     // 'response_' member to simplify the signal-slot connection slightly.
+      //     ::cartographer::common::MutexLocker locker(&mutex_);
+      //     response_ = srv.response;
+      //     Q_EMIT RequestSucceeded();
+      //     tf::poseMsgToEigen(response_.slice_pose, slice_pose_);
+
+      //     Ogre::Vector3 vecSubmapPos = trajectories_[trajectory_id_][submap_index_]->GetPosition();
+      //     tf::Vector3 position;
+      //     position = tf::Vector3(vecSubmapPos.x, vecSubmapPos.y, 0.1f);
+      //     //LOG(INFO) << "--------------------submap: " << submap_index_ << ":" << position[0] << ", " << position[1];  
+      //     if(pushFlag)             
+      //     {
+      //       MakeMarker(submap_index_, position, 1.0);
+      //     }
+      //     else
+      //     {
+
+      //       if(server_->get(strMarkerName, int_marker)
+      //       {
+      //         InteractiveMarker int_marker;
+      //       }
+      //       server_->setPose("", )
+      //     }
+                       
+      //   } else {
+      //     ::cartographer::common::MutexLocker locker(&mutex_);
+      //     query_in_progress_ = false;
+      //   }
+      // });      
     }
   }
 }
@@ -151,6 +298,41 @@ void SubmapsDisplay::update(const float wall_dt, const float ros_dt) {
       }
     }
   }
+}
+
+// %Tag()%
+void SubmapsDisplay::MakeMarker(int nId, const tf::Vector3& position, float fSize)
+{
+  visualization_msgs::InteractiveMarker int_marker;
+  int_marker.header.frame_id = "map";
+  tf::pointTFToMsg(position, int_marker.pose.position);
+  int_marker.scale = 1;
+  std::ostringstream strStream;    
+  strStream << nId;   
+  std::string strId = strStream.str();
+  int_marker.name = "submap_" + strId;
+  //int_marker.description = "Button\n(Left Click)";
+
+  visualization_msgs::InteractiveMarkerControl control;
+
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::BUTTON;
+  control.name = "button_control";
+
+  visualization_msgs::Marker marker = makeBox(int_marker, fSize);
+  control.markers.push_back( marker );
+  control.always_visible = true;
+  int_marker.controls.push_back(control);
+
+  server_->insert(int_marker);
+  //server_->setCallback(int_marker.name, &processFeedback);
+  menu_handler_.apply( *server_, int_marker.name );
+  server_->applyChanges();
+}
+// %EndTag()%
+
+void SubmapsDisplay::UpdateSceneNode() {
+  ROS_INFO("update submap!");
+  query_in_progress_ = false;
 }
 
 }  // namespace cartographer_rviz

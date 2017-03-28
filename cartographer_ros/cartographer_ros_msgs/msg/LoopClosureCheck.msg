@@ -1,0 +1,3 @@
+uint32 scan_start_index
+uint32 scan_end_index
+uint32 submap_index

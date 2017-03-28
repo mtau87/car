@@ -20,6 +20,9 @@
 #include <memory>
 #include <vector>
 
+#include "Eigen/Core"
+#include "Eigen/Geometry"
+
 #include "cartographer/common/mutex.h"
 #include "cartographer/common/port.h"
 #include "cartographer_ros_msgs/SubmapList.h"
@@ -28,7 +31,12 @@
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
 
+#include <interactive_markers/interactive_marker_server.h>
+#include <interactive_markers/menu_handler.h>
+
 namespace cartographer_rviz {
+
+constexpr char kLoopClosureSubmapTopic[] = "loop_closure_submap";
 
 // RViz plugin used for displaying maps which are represented by a collection of
 // submaps.
@@ -46,6 +54,16 @@ class SubmapsDisplay
 
   SubmapsDisplay(const SubmapsDisplay&) = delete;
   SubmapsDisplay& operator=(const SubmapsDisplay&) = delete;
+
+  void MakeMarker(int nId, const tf::Vector3& position, float fSize = 0.45); 
+
+ Q_SIGNALS:
+  // RPC request succeeded.
+  void RequestSucceeded();
+
+ private Q_SLOTS:
+  // Callback when an rpc request succeeded.
+  void UpdateSceneNode();
 
  private Q_SLOTS:
   void Reset();
@@ -68,7 +86,20 @@ class SubmapsDisplay
   ::rviz::StringProperty* tracking_frame_property_;
   using Trajectory = std::vector<std::unique_ptr<DrawableSubmap>>;
   std::vector<Trajectory> trajectories_ GUARDED_BY(mutex_);
+  ::cartographer_ros_msgs::SubmapQuery::Response response_ GUARDED_BY(mutex_);
+  Eigen::Affine3d slice_pose_ GUARDED_BY(mutex_);  
+  std::chrono::milliseconds last_query_timestamp_ GUARDED_BY(mutex_);
+  bool query_in_progress_ = false GUARDED_BY(mutex_);  
+  std::future<void> rpc_request_future_;  
   ::cartographer::common::Mutex mutex_;
+
+  int trajectory_id_;
+  int submap_index_;
+
+  boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;   
+  interactive_markers::MenuHandler menu_handler_;
+  ::ros::NodeHandle node_handle_;  
+  ::ros::Publisher loop_closure_submap_publisher_;  
 };
 
 }  // namespace cartographer_rviz

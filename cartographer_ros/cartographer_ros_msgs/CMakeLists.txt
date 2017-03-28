@@ -31,6 +31,8 @@ add_message_files(
     SubmapList.msg
     TrajectorySubmapList.msg
     SubmapEntry.msg
+    LoopClosureCheck.msg
+    LoopClosureSubmap.msg
 )
 
 add_service_files(

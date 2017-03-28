@@ -29,7 +29,7 @@
 #include "cartographer_ros_msgs/SubmapQuery.h"
 #include "eigen_conversions/eigen_msg.h"
 #include "ros/ros.h"
- #include "glog/logging.h"
+#include "glog/logging.h"
 
 namespace cartographer_rviz {
 
@@ -53,6 +53,55 @@ std::string GetSubmapIdentifier(const int trajectory_id,
   return std::to_string(trajectory_id) + "-" + std::to_string(submap_index);
 }
 
+// // %Tag(processFeedback)%
+// void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
+// {
+//   switch ( feedback->event_type )
+//   {
+//     case visualization_msgs::InteractiveMarkerFeedback::BUTTON_CLICK:
+//       {
+//         ROS_INFO_STREAM( "mouse click." );
+//       }
+//       break;
+
+//     case visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT:
+//       // ROS_INFO_STREAM( s.str() << ": menu item " << feedback->menu_entry_id << " clicked" << mouse_point_ss.str() << "." );
+//       break;
+
+//     case visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE:
+//       break;
+
+//     case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
+//       // ROS_INFO_STREAM( s.str() << ": mouse down" << mouse_point_ss.str() << "." );
+//       break;
+
+//     case visualization_msgs::InteractiveMarkerFeedback::MOUSE_UP:
+//       // ROS_INFO_STREAM( s.str() << ": mouse up" << mouse_point_ss.str() << "." );
+//       break;
+//   }
+
+//   //server_->applyChanges();
+// }
+// // %EndTag(processFeedback)%
+
+// // %Tag(Box)%
+// visualization_msgs::Marker makeBox( visualization_msgs::InteractiveMarker &msg, float fSize = 0.45)
+// {
+//   visualization_msgs::Marker marker;
+
+//   marker.type = visualization_msgs::Marker::CUBE;
+//   marker.scale.x = msg.scale * fSize;
+//   marker.scale.y = msg.scale * fSize;
+//   marker.scale.z = msg.scale * fSize;
+//   marker.color.r = 0.7;
+//   marker.color.g = 0.0;
+//   marker.color.b = 0.0;
+//   marker.color.a = 1.0;
+
+//   return marker;
+// }
+// // %EndTag(Box)%
+
 }  // namespace
 
 DrawableSubmap::DrawableSubmap(const int trajectory_id, const int submap_index,
@@ -64,9 +113,9 @@ DrawableSubmap::DrawableSubmap(const int trajectory_id, const int submap_index,
       manual_object_(scene_manager->createManualObject(
           kManualObjectPrefix +
           GetSubmapIdentifier(trajectory_id, submap_index))),
-      pRect_(scene_manager->createManualObject(
+/*      pRect_(scene_manager->createManualObject(
           kManualObjectTestPrefix + 
-          GetSubmapIdentifier(trajectory_id, submap_index))),      
+          GetSubmapIdentifier(trajectory_id, submap_index))),  */    
       last_query_timestamp_(0) {
   material_ = Ogre::MaterialManager::getSingleton().getByName(
       kSubmapSourceMaterialName);
@@ -79,8 +128,12 @@ DrawableSubmap::DrawableSubmap(const int trajectory_id, const int submap_index,
   material_->setDepthBias(-1.f, 0.f);
   material_->setDepthWriteEnabled(false);
   scene_node_->attachObject(manual_object_);
-  scene_node_->attachObject(pRect_);
+  //scene_node_->attachObject(pRect_);
   connect(this, SIGNAL(RequestSucceeded()), this, SLOT(UpdateSceneNode()));
+
+
+  //server_.reset( new interactive_markers::InteractiveMarkerServer("submap_list","",false) );
+ 
 }
 
 DrawableSubmap::~DrawableSubmap() {
@@ -91,7 +144,7 @@ DrawableSubmap::~DrawableSubmap() {
   }
   scene_manager_->destroySceneNode(scene_node_);
   scene_manager_->destroyManualObject(manual_object_);
-  scene_manager_->destroyManualObject(pRect_);
+  //scene_manager_->destroyManualObject(pRect_);
 }
 
 void DrawableSubmap::Update(
@@ -207,23 +260,27 @@ void DrawableSubmap::UpdateSceneNode() {
   manual_object_->textureCoord(1.0f, 0.0f);
   manual_object_->end();
 
-  pRect_->clear();
-  pRect_->begin("BaseWhiteNoLighting",
-        Ogre::RenderOperation::OT_TRIANGLE_STRIP);
-  // Bottom left
-  pRect_->position(-0.2f - slice_pose_.translation().x(), 0.0f - slice_pose_.translation().y(), 5.0f);
-  //manual_object_-> colour(Ogre::ColourValue::Blue);
-  pRect_->textureCoord(0.0f, 1.0f);
-  // Bottom right
-  pRect_->position(-0.2f - slice_pose_.translation().x(), -0.2f - slice_pose_.translation().y(), 5.0f);
-  pRect_->textureCoord(1.0f, 1.0f);
-  // Top left
-  pRect_->position(0.0f - slice_pose_.translation().x(), 0.0f - slice_pose_.translation().y(), 5.0f);
-  pRect_->textureCoord(0.0f, 0.0f);
-  // Top right
-  pRect_->position(0.0f - slice_pose_.translation().x(), -0.2f - slice_pose_.translation().y(), 5.0f);
-  pRect_->textureCoord(1.0f, 0.0f);
-  pRect_->end();
+  // pRect_->clear();
+  // pRect_->begin("BaseWhiteNoLighting",
+  //       Ogre::RenderOperation::OT_TRIANGLE_STRIP);
+  // // Bottom left
+  // pRect_->position(-0.2f - slice_pose_.translation().x(), 0.0f - slice_pose_.translation().y(), 5.0f);
+  // //manual_object_-> colour(Ogre::ColourValue::Blue);
+  // pRect_->textureCoord(0.0f, 1.0f);
+  // // Bottom right
+  // pRect_->position(-0.2f - slice_pose_.translation().x(), -0.2f - slice_pose_.translation().y(), 5.0f);
+  // pRect_->textureCoord(1.0f, 1.0f);
+  // // Top left
+  // pRect_->position(0.0f - slice_pose_.translation().x(), 0.0f - slice_pose_.translation().y(), 5.0f);
+  // pRect_->textureCoord(0.0f, 0.0f);
+  // // Top right
+  // pRect_->position(0.0f - slice_pose_.translation().x(), -0.2f - slice_pose_.translation().y(), 5.0f);
+  // pRect_->textureCoord(1.0f, 0.0f);
+  // pRect_->end();
+
+  // tf::Vector3 position;
+  // position = tf::Vector3(0.0f, 0.0f, 2.0f);
+  // MakeMarker(submap_index_, position, 1.0); 
   //scene_node_->attachObject(pRect);
 
   Ogre::DataStreamPtr pixel_stream;
@@ -269,4 +326,35 @@ float DrawableSubmap::UpdateAlpha(const float target_alpha) {
   return current_alpha_;
 }
 
+// // %Tag()%
+// void DrawableSubmap::MakeMarker(int nId, const tf::Vector3& position, float fSize)
+// {
+//   visualization_msgs::InteractiveMarker int_marker;
+//   int_marker.header.frame_id = "map";
+//   tf::pointTFToMsg(position, int_marker.pose.position);
+//   int_marker.scale = 1;
+//   std::ostringstream strStream;    
+//   strStream << nId;   
+//   std::string strId = strStream.str();
+//   int_marker.name = "submap_" + strId + "_unchecked";
+//   //int_marker.description = "Button\n(Left Click)";
+
+//   visualization_msgs::InteractiveMarkerControl control;
+
+//   control.interaction_mode = visualization_msgs::InteractiveMarkerControl::BUTTON;
+//   control.name = "button_control";
+
+//   visualization_msgs::Marker marker = makeBox(int_marker, fSize);
+//   control.markers.push_back( marker );
+//   control.always_visible = true;
+//   int_marker.controls.push_back(control);
+
+//   server_->insert(int_marker);
+//   server_->setCallback(int_marker.name, &processFeedback);
+//   //server_->applyChanges();
+// }
+// // %EndTag()%
+
 }  // namespace cartographer_rviz
+
+

@@ -70,6 +70,10 @@ void WriteOccupancyGridInfoToYaml(const ::nav_msgs::OccupancyGrid& grid,
     out << YAML::Key << "occupied_thresh" << YAML::Value << 0.51;
     out << YAML::Key << "free_thresh" << YAML::Value << 0.49;
     out << YAML::Key << "negate" << YAML::Value << 0;
+    out << YAML::Key << "left" << YAML::Value << grid.info.origin.position.x;
+    out << YAML::Key << "right" << YAML::Value << grid.info.origin.position.x + grid.info.resolution*grid.info.width;    
+    out << YAML::Key << "top" << YAML::Value << grid.info.origin.position.y + grid.info.resolution*grid.info.height;    
+    out << YAML::Key << "bottom" << YAML::Value << grid.info.origin.position.y;
     out << YAML::EndMap;
     CHECK(out.good()) << out.GetLastError();
   }

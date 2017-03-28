@@ -35,6 +35,7 @@
 #include "rviz/display_context.h"
 #include "rviz/frame_manager.h"
 
+
 namespace cartographer_rviz {
 
 // Contains all the information needed to render a submap onto the final
@@ -68,6 +69,11 @@ class DrawableSubmap : public QObject {
   // 'current_tracking_z'.
   void SetAlpha(double current_tracking_z);
 
+  Ogre::Vector3 GetPosition() {
+    return position_;
+  }
+  //void MakeMarker(int nId, const tf::Vector3& position, float fSize = 0.45); 
+
  Q_SIGNALS:
   // RPC request succeeded.
   void RequestSucceeded();
@@ -87,7 +93,7 @@ class DrawableSubmap : public QObject {
   Ogre::SceneManager* const scene_manager_;
   Ogre::SceneNode* const scene_node_;
   Ogre::ManualObject* manual_object_;
-  Ogre::ManualObject* pRect_;
+  //Ogre::ManualObject* pRect_;
 
   Ogre::TexturePtr texture_;
   Ogre::MaterialPtr material_;
@@ -102,6 +108,8 @@ class DrawableSubmap : public QObject {
   std::future<void> rpc_request_future_;
   ::cartographer_ros_msgs::SubmapQuery::Response response_ GUARDED_BY(mutex_);
   float current_alpha_ = 0.f;
+
+  //boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_; 
 };
 
 }  // namespace cartographer_rviz
